@@ -1,6 +1,7 @@
 # Gloam live/installer ISO: NixOS that boots straight into the Shady session.
 #   nix build .#nixosConfigurations.gloam-live.config.system.build.isoImage
-self:
+# shady: the Shady flake, which provides the NixOS module.
+shady:
 { config, lib, pkgs, modulesPath, ... }:
 
 let
@@ -11,7 +12,7 @@ in
 {
   imports = [
     "${modulesPath}/installer/cd-dvd/installation-cd-minimal.nix"
-    self.nixosModules.default
+    shady.nixosModules.default
   ];
 
   # Gloam is a NixOS derivative: its name goes into os-release and the boot menu.

@@ -1,6 +1,6 @@
 name: Gloam ISO
 
-# Pushing a tag gloam-v<version> (matching distro/VERSION) builds the live ISO
+# Pushing a tag gloam-v<version> (matching VERSION) builds the live ISO
 # and publishes it as a release, which https://gloaming-dusk.github.io/download/
 # lists. A manual run builds the same ISO and keeps it as a workflow artifact.
 on:
@@ -33,12 +33,12 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
 
-      - name: Check the tag against distro/VERSION
+      - name: Check the tag against VERSION
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          version="$(cat distro/VERSION)"
+          version="$(cat VERSION)"
           if [ "$GITHUB_REF_NAME" != "gloam-v$version" ]; then
-            echo "::error::tag $GITHUB_REF_NAME does not match distro/VERSION ($version)"
+            echo "::error::tag $GITHUB_REF_NAME does not match VERSION ($version)"
             exit 1
           fi
 
@@ -60,7 +60,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version="$(cat distro/VERSION)"
+          version="$(cat VERSION)"
           iso="$(basename result/iso/*.iso)"
           cat > notes.md <<EOF
           The Gloam $version live ISO: NixOS with the Shady desktop and greeter.
@@ -74,8 +74,8 @@ jobs:
 
           Writing it to a USB stick and installing: https://gloaming-dusk.github.io/get-started/
           EOF
-          if [ -f "distro/releases/$version.md" ]; then
-            cat "distro/releases/$version.md" > release-notes.md
+          if [ -f "releases/$version.md" ]; then
+            cat "releases/$version.md" > release-notes.md
             printf '\n' >> release-notes.md
             cat notes.md >> release-notes.md
             mv release-notes.md notes.md
