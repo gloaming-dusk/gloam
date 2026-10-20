@@ -53,5 +53,6 @@ in
 
   fonts.packages = with pkgs; [ noto-fonts noto-fonts-cjk-sans noto-fonts-color-emoji ];
 
-  environment.systemPackages = with pkgs; [ firefox networkmanagerapplet pavucontrol git ];
+  # Horizon's control center sets brightness and shows what is playing.
+  environment.systemPackages = with pkgs; [ firefox networkmanagerapplet pavucontrol git brightnessctl playerctl ];
 }

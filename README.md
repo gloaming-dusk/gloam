@@ -21,7 +21,7 @@ without Gloam. This flake takes it as the `shady` input and follows its
 
 ```sh
 nix build .#nixosConfigurations.gloam-live.config.system.build.isoImage
-ls result/iso/   # gloam-live-0.2.1-x86_64-linux.iso
+ls result/iso/   # gloam-live-0.3.0-x86_64-linux.iso
 ```
 
 The ISO boots to the Shady greeter. The live user `nixos` has no password, so
@@ -39,7 +39,7 @@ qemu-system-x86_64 \
   -enable-kvm -cpu host -smp 4 -m 4096 \
   -device virtio-vga-gl -display gtk,gl=on \
   -device qemu-xhci -device usb-tablet \
-  -boot d -cdrom result/iso/gloam-live-0.2.1-x86_64-linux.iso
+  -boot d -cdrom result/iso/gloam-live-0.3.0-x86_64-linux.iso
 ```
 
 The USB tablet provides absolute pointer coordinates. The GL device enables
@@ -89,8 +89,8 @@ flake's input, now `nixos-26.05`.
 release, bump it, commit, and push a matching tag:
 
 ```sh
-echo 0.2.1 > VERSION && git commit -am "Gloam 0.2.1"
-git tag gloam-v0.2.1 && git push origin main gloam-v0.2.1
+echo 0.3.0 > VERSION && git commit -am "Gloam 0.3.0"
+git tag gloam-v0.3.0 && git push origin main gloam-v0.3.0
 ```
 
 [`gloam-iso.yml`](.github/workflows/gloam-iso.yml) then builds the ISO,
