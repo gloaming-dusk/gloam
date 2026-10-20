@@ -1,7 +1,7 @@
 # Gloam
 
 Gloam is a NixOS-based distribution built around the Shady compositor: it
-boots into Shady with the Afterglow rice, logs in through the Shady greeter
+boots into Shady with its default rice (Horizon), logs in through the Shady greeter
 and carries NetworkManager, PipeWire, Noto fonts (CJK included) and Firefox.
 
 This repository holds what is specific to Gloam. Shady itself lives in
