@@ -1,101 +1,56 @@
 # Gloam
 
-Gloam is a NixOS-based distribution built around the Shady compositor: it
-boots into Shady with its default rice (Horizon), logs in through the Shady greeter
-and carries NetworkManager, PipeWire, Noto fonts (CJK included) and Firefox.
-
-This repository holds what is specific to Gloam. Shady itself lives in
-[gloaming-dusk/shady](https://github.com/gloaming-dusk/shady), whose flake
-provides the package, the NixOS module (`programs.shady`,
-`programs.shady.greeter`) and its VM tests, which any NixOS system can use
-without Gloam. This flake takes it as the `shady` input and follows its
-`nixpkgs`.
+Gloam is a Wayland desktop. It brings together what is needed to use one all
+day, the way GNOME or KDE do:
 
 | | |
 |---|---|
-| `flake.nix` | the `gloam-live` NixOS configuration, built from the `shady` input |
-| `iso.nix` | the live/installer ISO: the minimal NixOS installer plus Shady, the greeter, flakes, and Gloam's name in os-release and the boot menu |
-| `VERSION` | the Gloam version |
+| [Shady](https://github.com/gloaming-dusk/shady) | the compositor |
+| `shady-shell` and Tide | the desktop shell and its default look |
+| `shady-greeter` | the login screen |
+| this repository | the session, the services the shell talks to, and the applications |
 
-## Building the ISO
+Gloam used to be a NixOS-based distribution with a live ISO. It is a desktop
+you add to a system now; the last ISO stays under the
+[gloam-v0.3.0 release](https://github.com/gloaming-dusk/gloam/releases/tag/gloam-v0.3.0).
 
-```sh
-nix build .#nixosConfigurations.gloam-live.config.system.build.isoImage
-ls result/iso/   # gloam-live-0.3.0-x86_64-linux.iso
+## Installing on NixOS
+
+```nix
+{
+  inputs.gloam.url = "github:gloaming-dusk/gloam";
+
+  outputs = { nixpkgs, gloam, ... }: {
+    nixosConfigurations.my-machine = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        ./configuration.nix
+        gloam.nixosModules.default
+        { programs.gloam.enable = true; }
+      ];
+    };
+  };
+}
 ```
 
-The ISO boots to the Shady greeter. The live user `nixos` has no password, so
-press Enter (the card says so through `programs.shady.greeter.hint`); Tab picks
-Shady or Shady (Safe Mode). In a VM without a GPU, wlroots falls back to
-llvmpipe.
+This turns on the Shady session and its login screen, NetworkManager, PipeWire,
+Bluetooth, power profiles, a polkit agent and a keyring, and installs the
+applications in `programs.gloam.apps`, which you can replace. Every
+`programs.shady` option still applies.
 
-## Testing in QEMU
+To change the desktop itself, see
+[Customizing](https://gloaming-dusk.github.io/docs/customizing/).
 
-Run from this repository after building the ISO. On a Linux host with
-KVM access and a QEMU build with GTK/OpenGL support:
+## Applications
 
-```sh
-qemu-system-x86_64 \
-  -enable-kvm -cpu host -smp 4 -m 4096 \
-  -device virtio-vga-gl -display gtk,gl=on \
-  -device qemu-xhci -device usb-tablet \
-  -boot d -cdrom result/iso/gloam-live-0.3.0-x86_64-linux.iso
-```
+Gloam uses good existing applications where it can: Nautilus, Loupe, Papers,
+Text Editor, Calculator, Celluloid and Firefox. It will have its own only where
+nothing else can do the job, starting with a settings application.
 
-The USB tablet provides absolute pointer coordinates. The GL device enables
-accelerated rendering; for hosts without OpenGL support, use
-`-device virtio-vga -display gtk` instead (software rendering is slower).
-Shady draws software cursors when hardware cursor planes are unavailable,
-and includes an Adwaita cursor theme for both the greeter and user session.
-The live ISO enables `programs.shady.softwareCursor` so cursor orientation and
-hotspots do not depend on virtual GPU hardware cursor planes. Other NixOS
-systems can enable the same option; standalone sessions can set
-`SHADY_SOFTWARE_CURSORS=1` before starting Shady.
-Right clicks reach applications and shell context menus; use Alt+right-drag
-to orbit the camera.
-
-Firefox runs through native Wayland and opens on the current workspace.
-If an application fails to launch, open
-a terminal with Super+Enter and run it there to see its error. Session and
-launcher output is also available with `journalctl -b -t shady`.
-To diagnose boot delays, run `systemd-analyze` and
-`systemd-analyze critical-chain greetd.service` inside the guest.
-
-After changing Shady or the NixOS configuration, rebuild the ISO: an existing
-ISO will continue to contain the old binaries. To pick up a newer Shady,
-update the input:
+## Checking
 
 ```sh
-nix flake update shady
+nix build .#checks.x86_64-linux.module
 ```
 
-To try an unpushed Shady checkout, override the input:
-
-```sh
-nix build .#nixosConfigurations.gloam-live.config.system.build.isoImage \
-  --override-input shady path:../shady
-```
-
-The VM regression tests (the session test opens a Firefox window, the greeter
-test logs in) and the GLES2 pointer test live in the Shady repository.
-
-Gloam follows the latest NixOS stable release: `nixpkgs` follows the Shady
-flake's input, now `nixos-26.05`.
-
-## Releasing
-
-`VERSION` holds the Gloam version; it names the ISO
-(`gloam-live-<version>-x86_64-linux.iso`) and the boot menu entry. To
-release, bump it, commit, and push a matching tag:
-
-```sh
-echo 0.3.0 > VERSION && git commit -am "Gloam 0.3.0"
-git tag gloam-v0.3.0 && git push origin main gloam-v0.3.0
-```
-
-[`gloam-iso.yml`](.github/workflows/gloam-iso.yml) then builds the ISO,
-splits it under GitHub's 2 GiB asset limit (`<iso>.part0`, `.part1`, ... plus
-`<iso>.sha256` for the joined image) and publishes the release. The
-[website](https://gloaming-dusk.github.io/download/) picks it up on its next
-scheduled build. Running the workflow by hand builds the same files as an
-artifact without releasing.
+This builds a whole system with the module, without booting it.

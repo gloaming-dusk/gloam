@@ -1,14 +1,33 @@
 {
-  description = "Gloam, a NixOS-based distribution built around the Shady 3D compositor";
+  description = "Gloam, a desktop built on the Shady compositor";
 
   # Gloam follows the latest NixOS stable release, the same one Shady follows.
   inputs.shady.url = "github:gloaming-dusk/shady";
   inputs.nixpkgs.follows = "shady/nixpkgs";
 
-  outputs = { self, nixpkgs, shady, ... }: {
-    nixosConfigurations.gloam-live = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [ (import ./iso.nix shady) ];
+  outputs = { self, nixpkgs, shady, ... }:
+    let
+      systems = [ "x86_64-linux" "aarch64-linux" ];
+      forAllSystems = nixpkgs.lib.genAttrs systems;
+    in {
+      packages = forAllSystems (system: rec {
+        session = nixpkgs.legacyPackages.${system}.callPackage ./session.nix {
+          shady = shady.packages.${system}.default;
+        };
+        default = session;
+      });
+
+      nixosModules = rec {
+        gloam = import ./module.nix { inherit self shady; };
+        default = gloam;
+      };
+
+      # Builds a whole system with the module, without booting it.
+      checks = forAllSystems (system: {
+        module = (nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [ self.nixosModules.default ./tests/system.nix ];
+        }).config.system.build.toplevel;
+      });
     };
-  };
 }
