@@ -10,12 +10,15 @@
       systems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
     in {
-      packages = forAllSystems (system: rec {
-        session = nixpkgs.legacyPackages.${system}.callPackage ./session.nix {
-          shady = shady.packages.${system}.default;
-        };
-        default = session;
-      });
+      packages = forAllSystems (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          shadyPackage = shady.packages.${system}.default;
+        in rec {
+          session = pkgs.callPackage ./session.nix { shady = shadyPackage; };
+          settings = pkgs.callPackage ./settings.nix { shady = shadyPackage; };
+          default = session;
+        });
 
       nixosModules = rec {
         gloam = import ./module.nix { inherit self shady; };

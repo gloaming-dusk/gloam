@@ -61,7 +61,8 @@ in
 
     fonts.packages = with pkgs; [ noto-fonts noto-fonts-cjk-sans noto-fonts-color-emoji ];
 
-    environment.systemPackages = cfg.apps ++ (with pkgs; [ brightnessctl pavucontrol ]);
+    environment.systemPackages = [ self.packages.${system}.settings ]
+      ++ cfg.apps ++ (with pkgs; [ brightnessctl pavucontrol ]);
 
     xdg.mime.defaultApplications = {
       "inode/directory" = desktop "org.gnome.Nautilus";

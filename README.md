@@ -44,8 +44,13 @@ To change the desktop itself, see
 ## Applications
 
 Gloam uses good existing applications where it can: Nautilus, Loupe, Papers,
-Text Editor, Calculator, Celluloid and Firefox. It will have its own only where
-nothing else can do the job, starting with a settings application.
+Text Editor, Calculator, Celluloid and Firefox. It has its own only where nothing
+else can do the job:
+
+- **Settings** (`gloam-settings`, also from the control center): the accent
+  colour, wallpaper, window corners and gaps, keyboard and touchpad. It is
+  drawn the way the shell is (`shady-shell --app`, `apps/settings/settings.lua`)
+  and saves to `~/.config/shady/settings.lua`. Changes apply at once.
 
 ## Checking
 
