@@ -11,8 +11,7 @@ day, the way GNOME or KDE do:
 | this repository | the session, the services the shell talks to, and the applications |
 
 Gloam used to be a NixOS-based distribution with a live ISO. It is a desktop
-you add to a system now; the last ISO stays under the
-[gloam-v0.3.0 release](https://github.com/gloaming-dusk/gloam/releases/tag/gloam-v0.3.0).
+you add to a system now.
 
 ## Installing on NixOS
 
