@@ -9,7 +9,8 @@
 
 -- shell.base("tide", options) builds on this file instead of copying it:
 --   palette   colours to change, by the names in style.lua
---   wallpaper a picture for the desktop and the lock screen
+--   wallpaper a picture, a folder of them or "#rrggbb", for the desktop and
+--             the lock screen, instead of the night sea
 --   bar       { left = fn(ctx), center = fn(ctx), right = fn(ctx) }, islands to add
 --   tiles     fn(ctx, tile), more tiles for the control center, as a list
 --   launcher  fn(query), results to put first: { title, subtitle, icon, run }
@@ -212,42 +213,51 @@ local SESSION = {
 }
 
 -- ---- wallpaper -------------------------------------------------------------
--- ~/.config/shady/wallpaper.png when there is one, else the night sea shader.
+-- The night sea is Tide's own wallpaper. shady-shell's wallpaper manager
+-- draws it unless something replaces it: the picture chosen in Settings (or
+-- the `wallpaper` option), a picture saved as ~/.config/shady/wallpaper.jpg
+-- (.png, .webp; a folder wallpapers/ is a slideshow), or `shady-wallpaper set`.
 
 local home = os.getenv("HOME") or ""
-local chosen = options.wallpaper or (settings.wallpaper ~= "" and settings.wallpaper) or nil
-local wallpaper = chosen and chosen:gsub("^~/", home .. "/")
-    or (os.getenv("XDG_CONFIG_HOME") or (home .. "/.config")) .. "/shady/wallpaper.png"
 local function exists(path)
     local f = io.open(path, "rb")
     if f then f:close() return true end
     return false
 end
+local chosen = options.wallpaper or (settings.wallpaper ~= "" and settings.wallpaper) or nil
+local SEA = { shader = shell.shader(HERE .. "/shaders/tide.frag"), uniforms = S.SEA_UNIFORMS,
+    color = P.base }
 
-local SEA = not exists(wallpaper) and shell.shader(HERE .. "/shaders/tide.frag") or nil
-local SEA_UNIFORMS = S.SEA_UNIFORMS
-
--- What lies under the wallpaper and the lock screen: the picture, or (with
--- the sea shader on top) nothing; the gradient covers the shm renderer.
-local function backdrop(ctx)
-    if not SEA then
-        return shell.image { left = 0, top = 0, path = wallpaper, width = ctx.width, height = ctx.height }
-    end
-    return false
+local has_manager, wallpaper = pcall(require, "wallpaper")
+if has_manager then
+    wallpaper.install { name = "tide-wallpaper", default = SEA, source = chosen }
+else
+    -- A shady-shell from before the manager: a PNG, else the sea.
+    local path = chosen and chosen:gsub("^~/", home .. "/")
+        or (os.getenv("XDG_CONFIG_HOME") or (home .. "/.config")) .. "/shady/wallpaper.png"
+    local picture = exists(path)
+    wallpaper = {
+        widget = function(ctx)
+            local layer = { left = 0, top = 0, width = ctx.width, height = ctx.height }
+            if picture then
+                layer.path = path
+                return shell.stack { width = ctx.width, height = ctx.height, shell.image(layer) }
+            end
+            layer.shader, layer.uniforms = SEA.shader, SEA.uniforms
+            return shell.stack { width = ctx.width, height = ctx.height, shell.box(layer) }
+        end,
+    }
+    shell.popup {
+        name = "tide-wallpaper", layer = "background", fill = true, outputs = "all",
+        input = "widgets", view = function(ctx) return wallpaper.widget(ctx) end,
+    }
 end
 
-shell.popup {
-    name = "tide-wallpaper",
-    layer = "background",
-    fill = true,
-    outputs = "all",
-    input = "widgets",
-    shader = SEA,
-    uniforms = SEA_UNIFORMS,
-    view = function(ctx)
-        return shell.stack { width = ctx.width, height = ctx.height, backdrop(ctx) }
-    end,
-}
+-- What lies under the lock screen: the same wallpaper. The sea's shader
+-- keeps what is drawn over it, so the clock and the field stand on it.
+local function backdrop(ctx)
+    return wallpaper.widget(ctx)
+end
 
 -- ---- the strip minimap -----------------------------------------------------
 
@@ -1427,8 +1437,6 @@ end)
 shell.popup {
     name = "tide-lock",
     lock = true,
-    shader = SEA,
-    uniforms = SEA_UNIFORMS,
     keyboard = "exclusive",
     text_input = false,
     view = function(ctx)
@@ -1605,4 +1613,5 @@ end
 return {
     style = S, P = P, font = font, text = text, glass = glass, card = card, island = island,
     tile = tile, slider = slider, has = has, sys = sys, act = act, lock = function() lock() end,
+    wallpaper = wallpaper,
 }

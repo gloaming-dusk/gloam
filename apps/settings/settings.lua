@@ -198,10 +198,18 @@ end
 local function valid_wallpaper(path)
     if path == "" then return nil end
     local full = path:gsub("^~/", home .. "/")
-    if not full:lower():match("%.png$") then return "Only PNG pictures can be used" end
-    local file = io.open(full, "rb")
-    if not file then return "There is no such file" end
-    file:close()
+    if not shell.stat then
+        -- A shady-shell from before its wallpaper manager reads only PNG.
+        if not full:lower():match("%.png$") then return "Only PNG pictures can be used" end
+        local file = io.open(full, "rb")
+        if not file then return "There is no such file" end
+        file:close()
+        return nil
+    end
+    local st = shell.stat(full)
+    if not st then return "There is no such file or folder" end
+    if st.dir then return nil end -- a slideshow
+    if not shell.image_size(full) then return "Not a picture this shell can read" end
     return nil
 end
 
@@ -212,7 +220,8 @@ local PAGES = {
         }),
         group("Desktop", {
             setting("Wallpaper", field(ctx, "wallpaper", "Night sea", valid_wallpaper),
-                "A PNG file", problem.wallpaper),
+                shell.stat and "A picture (PNG, JPEG, WebP) or a folder of them" or "A PNG file",
+                problem.wallpaper),
         }),
         group("Windows", {
             setting("Corners", choice(ctx, "window_corner_radius",

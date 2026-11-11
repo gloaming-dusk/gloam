@@ -74,8 +74,14 @@ installs Tide with the shell and its login screen.
 scene graph instead of the GL renderer: no rounded corners, glass or
 overview, and the least GPU work. `TIDE_IDLE_LOCK` and
 `TIDE_IDLE_SCREEN_OFF` (seconds, 0 for never) change the idle times;
-`TIDE_XKB_LAYOUT` and `TIDE_XKB_OPTIONS` the keyboard. A PNG at
-`~/.config/shady/wallpaper.png` replaces the night sea.
+`TIDE_XKB_LAYOUT` and `TIDE_XKB_OPTIONS` the keyboard.
+
+The night sea is the wallpaper until something replaces it, through
+shady-shell's wallpaper manager: the picture chosen in Settings, a picture
+saved as `~/.config/shady/wallpaper.jpg` (or `.png`, `.webp`; one per output
+as `wallpaper-<output>.jpg`), a folder `~/.config/shady/wallpapers` (a
+slideshow), or `shady-wallpaper set PATH`, which is kept across sessions.
+The lock screen stands on the same wallpaper.
 
 The shell uses optional tools when they are installed: `wpctl`, `nmcli`,
 `bluetoothctl`, `powerprofilesctl`, `playerctl`, `upower`, `grim`, `slurp`,
