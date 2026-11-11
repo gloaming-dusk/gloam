@@ -1,7 +1,7 @@
 -- Typing in the overview searches, with the real Tide runtime and shell. Every
 -- key arrives while the launcher is still opening: a lost first letter would
 -- launch "eta" instead of "zeta".
-dofile(assert(os.getenv("SHADY_ROOT")) .. "/rices/tide/init.lua")
+shady.base("tide")
 local after = shady.automation.after
 local L = shady.layout
 local probe_log = assert(os.getenv("OVERVIEW_IME_LOG"))

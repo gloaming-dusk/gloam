@@ -1,12 +1,12 @@
 # Gloam Settings: a Lua application that shady-shell draws.
-{ runCommand, shady }:
+{ runCommand, shady-shell }:
 
 runCommand "gloam-settings" { } ''
   mkdir -p $out/bin $out/share/gloam/settings $out/share/applications
   cp ${./apps/settings/settings.lua} $out/share/gloam/settings/settings.lua
   cat > $out/bin/gloam-settings <<SCRIPT
   #!/bin/sh
-  exec ${shady}/bin/shady-shell --app $out/share/gloam/settings/settings.lua
+  exec ${shady-shell}/bin/shady-shell --app $out/share/gloam/settings/settings.lua
   SCRIPT
   chmod +x $out/bin/gloam-settings
   cat > $out/share/applications/gloam-settings.desktop <<ENTRY

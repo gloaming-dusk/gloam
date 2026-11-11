@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
-# Tide on a real VT (Ctrl+Alt+F3, log in, run this), from a build tree.
+# Tide on a real VT (Ctrl+Alt+F3, log in, run this), from a Shady build tree
+# and shady-shell (env.sh says where they are looked for).
 set -euo pipefail
+source "$(dirname "$0")/env.sh"
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-cd "$ROOT"
-
-export SHADY_ROOT="$ROOT"
-export SHADY_LUA_INIT="$ROOT/rices/tide/init.lua"
-export SHADY_SHELL_CONFIG="${SHADY_SHELL_CONFIG:-$ROOT/rices/tide/shell.lua}"
+export SHADY_LUA_INIT="$TIDE_SHADY/init.lua"
+export SHADY_SHELL_CONFIG="${SHADY_SHELL_CONFIG:-$RICE/shell.lua}"
 
 if [[ $# -eq 0 ]]; then
-  set -- -s "${SHADY_STARTUP:-'$ROOT/build/shady-shell'}"
+  set -- -s "${SHADY_STARTUP:-'$SHADY_SHELL_BIN'}"
 fi
 
-exec "$ROOT/tools/run-native.sh" -c "$ROOT/rices/tide/config.lua" "$@"
+exec "$SHADY_CHECKOUT/tools/run-native.sh" -c "$TIDE_SHADY/config.lua" "$@"

@@ -55,20 +55,20 @@ system's state (click: the control center, `Super+S`).
 
 ![The launcher](launcher.jpg) ![The lock screen](lock.jpg)
 
+With Shady and shady-shell built in checkouts next to Gloam's (or
+`SHADY_CHECKOUT` and `SHADY_SHELL_BIN` pointing at them; see `env.sh`):
+
 ```bash
-nix develop -c ./tools/build.sh
-nix develop -c ./rices/tide/run.sh          # nested in a Wayland session
-nix develop -c ./rices/tide/run-native.sh   # directly on a VT (DRM + libinput)
+nix develop ../shady -c ./rices/tide/run.sh          # nested in a Wayland session
+nix develop ../shady -c ./rices/tide/run-native.sh   # directly on a VT (DRM + libinput)
 ```
 
-On NixOS, with the flake's module:
+Tide's compositor side, the layout, keys and rules, is
+[Shady's](https://github.com/gloaming-dusk/shady/tree/main/rices/tide); this
+directory is its shell.
 
-```nix
-programs.shady = {
-  enable = true;
-  greeter.enable = true;     # greetd with Shady's greeter, instead of SDDM
-};
-```
+On NixOS, `programs.gloam.enable = true;` (see [Gloam](../../README.md))
+installs Tide with the shell and its login screen.
 
 `Super+Shift+/` lists every key. `TIDE_LIGHT=1` draws through wlroots'
 scene graph instead of the GL renderer: no rounded corners, glass or

@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# The ways to start from Tide: with nothing configured Shady is Tide; a config
-# can build on it (shady.base, shell.base, last binding wins); shady-rice eject
-# makes a working copy; SHADY_RICE=none is the bare compositor and plain shell.
+# The ways to start from Tide: with nothing configured Shady is Tide, its
+# compositor side from Shady and its shell from here; a config can build on it
+# (shady.base, shell.base, last binding wins); shady-rice eject makes a
+# working copy from both; SHADY_RICE=none is the bare compositor and plain
+# shell. Run it with tests/run.sh.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 BUILD_DIR="${SHADY_SPATIAL_TEST_BUILD_DIR:-build-spatial-asan}"
-for bin in shady shady-shell shady-rice; do
+for bin in shady shady-rice; do
   [[ -e "$BUILD_DIR/$bin" ]] || { echo "tide-layers: missing $BUILD_DIR/$bin" >&2; exit 2; }
 done
 tmp="$(mktemp -d)"
@@ -53,11 +55,6 @@ has 'shady-shell: loaded .*/rices/tide/shell.lua' 'the default shell is not Tide
 run none 4 SHADY_RICE=none
 hasnt 'loading rice' 'SHADY_RICE=none loaded a rice'
 
-# Another rice by name.
-run other 6 SHADY_RICE=horizon
-has 'loading rice: Horizon' 'SHADY_RICE=horizon did not load Horizon'
-has 'shady-shell: loaded .*/rices/horizon/shell.lua' 'SHADY_RICE=horizon did not load its shell'
-
 # A config built on Tide.
 config="$tmp/layered-home/.config/shady"
 mkdir -p "$config"
@@ -91,7 +88,7 @@ assert(tide.P.dim == "#8E92AE", "palette lost Tide's colours")
 assert(tide.island and tide.card and tide.text, "pieces missing")
 shell.log("layer-test: shell built on tide")
 LUA
-run layered 6 "SHADY_TEST_SHELL=$ROOT/$BUILD_DIR/shady-shell" "SHADY_ROOT=$ROOT"
+run layered 6 "SHADY_TEST_SHELL=$SHADY_SHELL_BIN"
 has 'layer-test: base loaded' 'shady.base did not run'
 has 'loading rice: Tide' 'shady.base("tide") did not run the config'
 has 'layer-test: my close key' 'the later binding did not win'
@@ -102,16 +99,16 @@ has 'layer-test: bar extension' 'the bar option was not used'
 rice="sh $ROOT/$BUILD_DIR/shady-rice"
 home="$tmp/ejected-home"
 mkdir -p "$home"
-HOME="$home" XDG_CONFIG_HOME="" SHADY_ROOT="$ROOT" $rice eject >/dev/null || fail 'eject failed'
+HOME="$home" XDG_CONFIG_HOME="" SHADY_ROOT="$SHADY_CHECKOUT" $rice eject >/dev/null || fail 'eject failed'
 for file in config.lua init.lua shell.lua style.lua fonts shaders/tide.frag; do
   [[ -e "$home/.config/shady/$file" ]] || fail "eject did not copy $file"
 done
-if HOME="$home" XDG_CONFIG_HOME="" SHADY_ROOT="$ROOT" $rice eject >/dev/null 2>&1; then
+if HOME="$home" XDG_CONFIG_HOME="" SHADY_ROOT="$SHADY_CHECKOUT" $rice eject >/dev/null 2>&1; then
   fail 'a second eject overwrote the first'
 fi
 sed -i '1i shell.log("layer-test: my own copy")' "$home/.config/shady/shell.lua"
 printf '\nshady.spawn([[sh -c '"'"'exec "$SHADY_TEST_SHELL"'"'"']])\n' >>"$home/.config/shady/init.lua"
-run ejected 6 "SHADY_TEST_SHELL=$ROOT/$BUILD_DIR/shady-shell"
+run ejected 6 "SHADY_TEST_SHELL=$SHADY_SHELL_BIN"
 has 'loading rice: Tide' 'the copy did not load'
 has 'layer-test: my own copy' 'the shell did not load the copy'
 hasnt 'no fonts in' 'the copy lost its fonts'

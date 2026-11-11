@@ -2,7 +2,7 @@
 -- a dragged region, a clicked window, the whole screen, and the ways out.
 -- tests/headless-tide-screenshot.sh checks the pictures against what is logged.
 -- SHOT_TEST_MODE: "all" takes them every way; "failure" and "scale" one each.
-dofile(assert(os.getenv("SHADY_ROOT")) .. "/rices/tide/init.lua")
+shady.base("tide")
 local auto = shady.automation
 local after = auto.after
 local probe = assert(os.getenv("SHADY_AUTOMATION_PROBE"))

@@ -8,7 +8,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 BUILD_DIR="${SHADY_SPATIAL_TEST_BUILD_DIR:-build-spatial-asan}"
-for bin in shady shady-shell headless-automation-probe ime-probe; do
+for bin in shady headless-automation-probe ime-probe; do
   [[ -x "$BUILD_DIR/$bin" ]] || { echo "overview-search: missing $BUILD_DIR/$bin" >&2; exit 2; }
 done
 tmp="$(mktemp -d)"
@@ -27,14 +27,13 @@ set +e
   unset WAYLAND_DISPLAY WAYLAND_SOCKET SHADY_SOCKET
   export WLR_BACKENDS=headless WLR_HEADLESS_OUTPUTS=1 WLR_RENDERER=gles2 LIBGL_ALWAYS_SOFTWARE=1
   export XDG_DATA_HOME="$tmp/data" XDG_DATA_DIRS="$tmp/data"
-  export SHADY_ROOT="$ROOT" SHADY_LUA_INIT="$ROOT/tests/headless-overview-search-init.lua"
-  export SHADY_SHELL_BIN="$ROOT/$BUILD_DIR/shady-shell"
+  export SHADY_LUA_INIT="$ROOT/tests/headless-overview-search-init.lua"
   export OVERVIEW_IME_PROBE="$ROOT/$BUILD_DIR/ime-probe" OVERVIEW_IME_LOG="$tmp/ime"
   export TIDE_IDLE_LOCK=0 TIDE_IDLE_SCREEN_OFF=0
   export SHADY_SHELL_CONFIG="$ROOT/rices/tide/shell.lua"
   export ASAN_OPTIONS="${ASAN_OPTIONS:-abort_on_error=1:halt_on_error=1:detect_leaks=0}"
   export UBSAN_OPTIONS="${UBSAN_OPTIONS:-halt_on_error=1:print_stacktrace=1}"
-  timeout 40s "$BUILD_DIR/shady" -c "$ROOT/rices/tide/config.lua"
+  timeout 40s "$BUILD_DIR/shady" -c "$ROOT/tests/tide-config.lua"
 ) >"$log" 2>&1
 rc=$?
 set -e

@@ -1,5 +1,5 @@
 # NixOS module: `programs.gloam.enable = true;` installs the Gloam desktop.
-{ self, shady }:
+{ self, shady, shady-shell, shady-greeter }:
 { config, lib, pkgs, ... }:
 
 let
@@ -9,7 +9,11 @@ let
   desktop = app: "${app}.desktop";
 in
 {
-  imports = [ shady.nixosModules.default ];
+  imports = [
+    shady.nixosModules.default
+    shady-shell.nixosModules.default
+    shady-greeter.nixosModules.default
+  ];
 
   options.programs.gloam = {
     enable = lib.mkEnableOption "the Gloam desktop";
@@ -32,8 +36,13 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # The compositor, Tide's shell over its compositor side, and the
+    # login screen.
     programs.shady.enable = true;
-    programs.shady.greeter.enable = lib.mkDefault true;
+    programs.shady.rices = [ self.packages.${system}.tide ];
+    programs.shady-shell.enable = true;
+    services.shady-greeter.enable = lib.mkDefault true;
+    services.shady-greeter.softwareCursor = lib.mkDefault config.programs.shady.softwareCursor;
     services.displayManager.sessionPackages = [ session ];
 
     # What the shell's control center and the applications talk to.

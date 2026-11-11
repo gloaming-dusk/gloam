@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
-# Tide in a window on your current desktop (nested), from a build tree.
+# Tide in a window on your current desktop (nested), from a Shady build tree
+# and shady-shell (env.sh says where they are looked for).
 set -euo pipefail
+source "$(dirname "$0")/env.sh"
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-cd "$ROOT"
-
-export SHADY_ROOT="$ROOT"
-export SHADY_LUA_INIT="$ROOT/rices/tide/init.lua"
+export SHADY_LUA_INIT="$TIDE_SHADY/init.lua"
 export WLR_BACKENDS="${WLR_BACKENDS:-wayland}"
-export SHADY_SHELL_CONFIG="${SHADY_SHELL_CONFIG:-$ROOT/rices/tide/shell.lua}"
+export SHADY_SHELL_CONFIG="${SHADY_SHELL_CONFIG:-$RICE/shell.lua}"
 
 if [[ $# -eq 0 ]]; then
-  default_startup="'$ROOT/build/shady-shell' & exec ${TERMINAL:-foot}"
+  default_startup="'$SHADY_SHELL_BIN' & exec ${TERMINAL:-foot}"
   set -- -s "${SHADY_STARTUP:-$default_startup}"
 fi
 
-exec "$ROOT/build/shady" -c "$ROOT/rices/tide/config.lua" "$@"
+exec "$SHADY_BUILD_DIR/shady" -c "$TIDE_SHADY/config.lua" "$@"

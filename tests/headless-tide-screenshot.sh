@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 BUILD_DIR="${SHADY_SPATIAL_TEST_BUILD_DIR:-build-spatial-asan}"
-for bin in shady shady-shell headless-automation-probe; do
+for bin in shady headless-automation-probe; do
   [[ -x "$BUILD_DIR/$bin" ]] || { echo "tide-screenshot: missing $BUILD_DIR/$bin" >&2; exit 2; }
 done
 tmp="$(mktemp -d)"
@@ -34,8 +34,7 @@ run() {
     export XDG_RUNTIME_DIR="$tmp/$mode" HOME="$tmp/$mode-home" XDG_PICTURES_DIR="$pictures"
     unset WAYLAND_DISPLAY WAYLAND_SOCKET SHADY_SOCKET
     export WLR_BACKENDS=headless WLR_HEADLESS_OUTPUTS=1 WLR_RENDERER=gles2 LIBGL_ALWAYS_SOFTWARE=1
-    export SHADY_ROOT="$ROOT" SHADY_LUA_INIT="$ROOT/tests/headless-tide-screenshot-init.lua"
-    export SHADY_SHELL_BIN="$ROOT/$BUILD_DIR/shady-shell"
+    export SHADY_LUA_INIT="$ROOT/tests/headless-tide-screenshot-init.lua"
     export SHADY_AUTOMATION_PROBE="$ROOT/$BUILD_DIR/headless-automation-probe"
     export SHOT_TEST_MODE="$mode" SHOT_TEST_SCREEN="${SHADY_TEST_KEEP_SHOTS:+$SHADY_TEST_KEEP_SHOTS/screen-$mode.png}"
     export TIDE_IDLE_LOCK=0 TIDE_IDLE_SCREEN_OFF=0
@@ -43,7 +42,7 @@ run() {
     export ASAN_OPTIONS="${ASAN_OPTIONS:-abort_on_error=1:halt_on_error=1:detect_leaks=0}"
     export UBSAN_OPTIONS="${UBSAN_OPTIONS:-halt_on_error=1:print_stacktrace=1}"
     [[ $# -gt 0 ]] && export "$@"
-    dbus-run-session -- timeout 70s "$BUILD_DIR/shady" -c "$ROOT/rices/tide/config.lua"
+    dbus-run-session -- timeout 70s "$BUILD_DIR/shady" -c "$ROOT/tests/tide-config.lua"
   ) >"$log" 2>&1
   local rc=$?
   set -e

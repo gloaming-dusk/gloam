@@ -1,7 +1,7 @@
 -- Driver for capture.sh: Tide's runtime layer and shell with three
 -- terminals in the strip, then the stills.
 local root = assert(os.getenv("SHADY_ROOT"))
-dofile(root .. "/rices/tide/init.lua")
+shady.base("tide")
 
 local out = assert(os.getenv("CAPTURE_OUT"))
 local auto = shady.automation
