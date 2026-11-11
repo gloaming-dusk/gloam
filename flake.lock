@@ -22,7 +22,9 @@
           "shady",
           "nixpkgs"
         ],
-        "shady": "shady"
+        "shady": "shady",
+        "shady-greeter": "shady-greeter",
+        "shady-shell": "shady-shell"
       }
     },
     "shady": {
@@ -30,16 +32,67 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1794142944,
-        "narHash": "sha256-ukbgSMPfLR9vVrXvFxyoRLRkc9brbkglGk7jccHqOfI=",
+        "lastModified": 1794389809,
+        "narHash": "sha256-wYQ4hTac9CO5wFNajQXTuuhJckRAg5ogkN5pzqyDPfk=",
         "owner": "gloaming-dusk",
         "repo": "shady",
-        "rev": "78edb7ba6be6c123b862b6f78bf5cd671a2d47cb",
+        "rev": "7298d48204b3a9faf0645b5fa4e891ecc365e08d",
         "type": "github"
       },
       "original": {
         "owner": "gloaming-dusk",
         "repo": "shady",
+        "type": "github"
+      }
+    },
+    "shady-greeter": {
+      "inputs": {
+        "nixpkgs": [
+          "shady",
+          "nixpkgs"
+        ],
+        "shady": [
+          "shady"
+        ],
+        "shady-shell": [
+          "shady-shell"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794389016,
+        "narHash": "sha256-zxMnSWquNoxF8GvO/HSE0l7ZUNjNJcXHqCIrUqh0LDY=",
+        "owner": "gloaming-dusk",
+        "repo": "shady-greeter",
+        "rev": "58d584528bf28afd4991c2b3f9deb72c220006a0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gloaming-dusk",
+        "repo": "shady-greeter",
+        "type": "github"
+      }
+    },
+    "shady-shell": {
+      "inputs": {
+        "nixpkgs": [
+          "shady",
+          "nixpkgs"
+        ],
+        "shady": [
+          "shady"
+        ]
+      },
+      "locked": {
+        "lastModified": 1794389840,
+        "narHash": "sha256-TQg3vc1GaJTrvyVdGXD1ba9gWF0YlHGbJOZlW3lnw8c=",
+        "owner": "gloaming-dusk",
+        "repo": "shady-shell",
+        "rev": "353301bd252dae2ae320d074f4dcd22832de974f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "gloaming-dusk",
+        "repo": "shady-shell",
         "type": "github"
       }
     }
