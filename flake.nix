@@ -24,7 +24,7 @@
           shellPackage = shady-shell.packages.${system}.default;
         in rec {
           session = pkgs.callPackage ./session.nix { shady = shadyPackage; };
-          settings = pkgs.callPackage ./settings.nix { shady-shell = shellPackage; };
+          settings = pkgs.callPackage ./settings.nix { shady-shell = shellPackage; inherit tide; };
           tide = pkgs.callPackage ./tide.nix { };
           default = session;
         });

@@ -3,7 +3,10 @@
 -- Tide reads between its own values and the user's config. Changes apply at
 -- once, through the compositor's Lua runtime.
 
-local TIDE = shell.data_dir .. "/../rices/tide"
+-- Tide's style and fonts: from the gloam-tide package the launcher names, or
+-- beside shady-shell as they were before Tide's shell moved to Gloam.
+local TIDE = os.getenv("GLOAM_TIDE")
+if not TIDE or TIDE == "" then TIDE = shell.data_dir .. "/../rices/tide" end
 shell.fonts(TIDE .. "/fonts")
 
 local a = shell.alpha
