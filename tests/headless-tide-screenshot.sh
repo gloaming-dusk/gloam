@@ -3,7 +3,7 @@
 # Three runs: every way of taking a picture (seven, of the right sizes, each
 # reported); a directory it cannot write to (reported as a failure); and an
 # output at 1.75, where a region is in logical pixels and the picture in real
-# ones. Needs grim and wtype (in the dev shell) and dbus-run-session, so the
+# ones. Needs grim, wtype and dbus-run-session (in `nix develop`), so the
 # shell has its own notification server. SHADY_TEST_KEEP_SHOTS=<dir> keeps the
 # pictures and what the screen showed after each run.
 set -euo pipefail

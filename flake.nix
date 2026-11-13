@@ -53,6 +53,17 @@
         default = gloam;
       };
 
+      # `nix develop`: what tests/run.sh needs besides a built Shady checkout.
+      # The tests type with wtype, take pictures with grim, copy with
+      # wl-copy and give the shell its own bus with dbus-run-session.
+      devShells = forAllSystems (system:
+        let pkgs = nixpkgs.legacyPackages.${system};
+        in {
+          default = pkgs.mkShell {
+            packages = with pkgs; [ wtype grim wl-clipboard dbus ];
+          };
+        });
+
       # Builds a whole system with the module, without booting it.
       checks = forAllSystems (system: {
         module = (nixpkgs.lib.nixosSystem {
