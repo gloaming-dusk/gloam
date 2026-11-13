@@ -48,152 +48,39 @@ local function card(props)
     return shell.column(props)
 end
 
--- Whether a program is on PATH. (Not os.execute: the process reaps its
--- children itself, so system() never sees the status.)
-local function has(command)
-    for dir in (os.getenv("PATH") or ""):gmatch("[^:]+") do
-        local f = io.open(dir .. "/" .. command, "r")
-        if f then f:close() return true end
-    end
-    return false
-end
+-- What the machine is doing and how to drive it (sound, light, power,
+-- radios, music, the session) is shady-shell's `machine` module; it has no
+-- look, and Tide draws what it returns.
+local machine = require("machine")
+local has, sys, act = machine.has, machine, machine.act
 local HAVE = {
-    grim = has("grim"), playerctl = has("playerctl"), nmcli = has("nmcli"), bluetoothctl = has("bluetoothctl"),
-    settings = has("gloam-settings"), powerprofiles = has("powerprofilesctl"), wlcopy = has("wl-copy"), swaylock = has("swaylock"),
+    grim = has("grim"), playerctl = machine.have.playerctl, nmcli = machine.have.nmcli,
+    bluetoothctl = machine.have.bluetoothctl, powerprofiles = machine.have.powerprofilesctl,
+    settings = has("gloam-settings"), wlcopy = has("wl-copy"), swaylock = has("swaylock"),
 }
+local PROFILE_NAMES = { ["power-saver"] = "Power saver", balanced = "Balanced", performance = "Performance" }
+local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
 
--- ---- system state ----------------------------------------------------------
--- Polled with plain tools. A value the shell itself just changed wins over
--- the poll for a few seconds, so sliders do not jump back.
-
-local override = {}
-local function remember(k, v) override[k] = { value = v, at = os.time() } end
-local function live(k, polled)
-    local o = override[k]
-    if o and os.time() - o.at < 3 then return o.value end
-    return polled
-end
-
-local sys = {}
-
-function sys.volume()
-    local out = shell.poll("wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null", 4000)
-    local v = tonumber(out:match("Volume:%s*([%d%.]+)") or "")
-    return live("volume", v and math.floor(v * 100 + 0.5)), live("mute", out:find("MUTED") ~= nil)
-end
-
-function sys.mic_muted()
-    local out = shell.poll("wpctl get-volume @DEFAULT_AUDIO_SOURCE@ 2>/dev/null", 8000)
-    return live("mic", out:find("MUTED") ~= nil)
-end
-
-local brightness_cmd = string.format("sh %q", shell.data_dir .. "/bin/shady-brightness")
-function sys.brightness()
-    return live("brightness", tonumber(shell.poll(brightness_cmd .. " get 2>/dev/null", 8000)))
-end
-
-function sys.battery()
-    local out = shell.poll("cat /sys/class/power_supply/BAT*/capacity /sys/class/power_supply/BAT*/status 2>/dev/null | head -n2 | tr '\\n' ' '", 20000)
-    local level, status = out:match("(%d+)%s+(%a+)")
-    if not level then return nil end
-    return tonumber(level), status
-end
-
-function sys.battery_time()
-    local out = shell.poll("upower -i $(upower -e 2>/dev/null | grep -m1 BAT) 2>/dev/null | grep -E 'time to (empty|full)' | head -n1", 60000)
-    local what, n, unit = out:match("time to (%a+):%s*([%d%.]+)%s*(%a+)")
-    if not what then return nil end
-    return string.format("%s %s until %s", n, unit, what == "empty" and "empty" or "full")
-end
-
-function sys.wifi()
-    if not HAVE.nmcli then return nil end
-    local state = trim(shell.poll("nmcli -t -f WIFI general 2>/dev/null", 10000))
-    local ssid = trim(shell.poll("nmcli -t -f active,ssid device wifi 2>/dev/null | sed -n 's/^yes://p' | head -n1", 10000))
-    local wired = trim(shell.poll("nmcli -t -f TYPE,STATE device 2>/dev/null | grep -m1 '^ethernet:connected'", 15000))
-    return live("wifi", state == "enabled"), ssid, wired ~= ""
-end
-
-function sys.bluetooth()
-    if not HAVE.bluetoothctl then return nil end
-    local out = shell.poll("bluetoothctl show 2>/dev/null | grep -m1 Powered", 10000)
-    if out == "" then return nil end
-    local connected = trim(shell.poll("bluetoothctl devices Connected 2>/dev/null | head -n1 | cut -d' ' -f3-", 10000))
-    return live("bluetooth", out:find("yes") ~= nil), connected
-end
-
-function sys.profile()
-    if not HAVE.powerprofiles then return nil end
-    return live("profile", trim(shell.poll("powerprofilesctl get 2>/dev/null", 15000)))
-end
-
-function sys.media()
-    if not HAVE.playerctl then return nil end
-    local out = shell.poll("playerctl metadata --format '{{status}}\t{{title}}\t{{artist}}' 2>/dev/null", 2500)
-    local status, title, artist = out:match("^(%a+)\t([^\t]*)\t([^\n]*)")
-    if not status or status == "Stopped" then return nil end
-    return { playing = live("playing", status == "Playing"), title = title, artist = trim(artist) }
-end
-
-function sys.uptime()
-    local s = tonumber((shell.poll("cut -d' ' -f1 /proc/uptime", 60000)):match("^[%d]+") or "")
+-- "up 3h 12m", "2 h 05 until full": how Tide words the machine's numbers.
+local function uptime_text()
+    local s = sys.uptime()
     if not s then return "" end
     local h, m = s // 3600, (s % 3600) // 60
     return h > 0 and string.format("up %dh %dm", h, m) or string.format("up %d min", m)
 end
-
-local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
-
-local act = {}
-function act.volume(v)
-    v = clamp(math.floor(v + 0.5), 0, 150)
-    remember("volume", v)
-    remember("mute", false)
-    shell.spawn(string.format("wpctl set-mute @DEFAULT_AUDIO_SINK@ 0; wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ %.2f", v / 100))
-end
-function act.mute()
-    local _, muted = sys.volume()
-    remember("mute", not muted)
-    shell.spawn("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle")
-end
-function act.mic_mute()
-    remember("mic", not sys.mic_muted())
-    shell.spawn("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle")
-end
-function act.brightness(v)
-    v = clamp(math.floor(v + 0.5), 1, 100)
-    remember("brightness", v)
-    shell.spawn(string.format("%s set %d", brightness_cmd, v))
-end
-function act.wifi()
-    local on = sys.wifi()
-    remember("wifi", not on)
-    shell.spawn("nmcli radio wifi " .. (on and "off" or "on"))
-end
-function act.bluetooth()
-    local on = sys.bluetooth()
-    remember("bluetooth", not on)
-    shell.spawn("bluetoothctl power " .. (on and "off" or "on"))
-end
-local PROFILES = { "power-saver", "balanced", "performance" }
-local PROFILE_NAMES = { ["power-saver"] = "Power saver", balanced = "Balanced", performance = "Performance" }
-function act.profile()
-    local current, next = sys.profile(), PROFILES[1]
-    for i, p in ipairs(PROFILES) do if p == current then next = PROFILES[i % #PROFILES + 1] end end
-    remember("profile", next)
-    shell.spawn("powerprofilesctl set " .. next)
-end
-function act.media(what)
-    if what == "play-pause" then
-        local m = sys.media()
-        if m then remember("playing", not m.playing) end
-    end
-    shell.spawn("playerctl " .. what)
+local function battery_time_text()
+    local minutes, toward = sys.battery_time()
+    if not minutes then return nil end
+    local h, m = minutes // 60, minutes % 60
+    return (h > 0 and string.format("%dh %02dm", h, m) or string.format("%d min", m))
+        .. " until " .. (toward == "empty" and "empty" or "full")
 end
 
 -- ---- session -----------------------------------------------------------------
 
-local dnd = false
+-- Do-not-disturb, which toasts to show and when their popup is open:
+-- shady-shell's `toasts` module (followed below, with the popup).
+local toasts = require("toasts")
 local function caffeine() return shell.compositor_value("tide.caffeine", "0") == "1" end
 
 -- The lock screen is the shell's own (ext-session-lock); it is drawn
@@ -391,7 +278,7 @@ local function status_island(ctx)
             text(media.title, { font = font("Medium", 9), max_width = 150, color = a(P.text, 0.9) }),
         }
     end
-    if dnd then items[#items + 1] = shell.icon("bell", { size = 14, color = P.warn }) end
+    if toasts.dnd() then items[#items + 1] = shell.icon("bell", { size = 14, color = P.warn }) end
     if caffeine() then items[#items + 1] = text("☕", { font = font("Medium", 10) }) end
     local wifi_on, ssid, wired = sys.wifi()
     if wifi_on ~= nil then
@@ -531,15 +418,7 @@ local function ago(seconds)
     return (seconds // 86400) .. "d"
 end
 
-local function activate(n)
-    for _, action in ipairs(n.actions) do
-        if action.key == "default" then
-            shell.invoke_notification(n.id, "default")
-            return
-        end
-    end
-    shell.dismiss_notification(n.id)
-end
+local activate = toasts.activate
 
 local function note(ctx, n, opts)
     opts = opts or {}
@@ -586,16 +465,6 @@ local function note(ctx, n, opts)
     }
 end
 
-local function sync_toasts()
-    local want = false
-    if not dnd and not shell.is_open("tide-control") then
-        for _, n in ipairs(shell.notifications()) do want = want or n.active end
-    end
-    if want ~= shell.is_open("tide-toasts") then
-        if want then shell.open("tide-toasts") else shell.close("tide-toasts") end
-    end
-end
-shell.on("notifications", sync_toasts)
 
 shell.popup {
     name = "tide-toasts",
@@ -605,10 +474,8 @@ shell.popup {
     keyboard = "none",
     view = function(ctx)
         local list = {}
-        for _, n in ipairs(shell.notifications()) do
-            if n.active and #list < 3 then
-                list[#list + 1] = note(ctx, n, { prefix = "toast:", background = glass(0.96), width = 300 })
-            end
+        for _, n in ipairs(toasts.shown(3)) do
+            list[#list + 1] = note(ctx, n, { prefix = "toast:", background = glass(0.96), width = 300 })
         end
         return shell.column { align = "stretch", gap = 8, list }
     end,
@@ -661,7 +528,7 @@ local function control_view(ctx)
             text(user:sub(1, 1):upper(), { font = font("ExtraBold", 13), color = P.base }) },
         shell.column { grow = 1, align = "start", gap = 1,
             text(user, { font = font("Bold", 11) }),
-            text(sys.uptime(), { font = font("Medium", 8.5), color = P.dim }) },
+            text(uptime_text(), { font = font("Medium", 8.5), color = P.dim }) },
         HAVE.settings and shell.row { id = "cc:settings", width = 34, height = 34, radius = 17, justify = "center",
             background = a(P.text, ctx.hovered == "cc:settings" and 0.12 or 0.06),
             on_click = function() shell.close("tide-control"); shell.spawn("gloam-settings") end,
@@ -685,8 +552,9 @@ local function control_view(ctx)
         tiles[#tiles + 1] = tile(ctx, "t:bt", "bluetooth", "Bluetooth",
             bt_on and (bt_dev ~= "" and bt_dev or "On") or "Off", bt_on, act.bluetooth)
     end
+    local dnd = toasts.dnd()
     tiles[#tiles + 1] = tile(ctx, "t:dnd", "bell", "Do not disturb", dnd and "On" or "Off", dnd,
-        function() dnd = not dnd; sync_toasts() end)
+        function() toasts.set_dnd(not dnd) end)
     tiles[#tiles + 1] = tile(ctx, "t:caffeine", "sun", "Stay awake", caffeine() and "On" or "Off",
         caffeine(), function() shell.key("Super+Ctrl+Shift+F12") end)
     if profile and profile ~= "" then
@@ -713,7 +581,7 @@ local function control_view(ctx)
 
     local battery_line = false
     if level then
-        local when = sys.battery_time()
+        local when = battery_time_text()
         battery_line = shell.row { gap = 8, align = "center",
             battery_icon(level, status),
             text(status == "Charging" and "Charging" or (status == "Full" and "Full" or "On battery"),
@@ -1356,102 +1224,40 @@ shell.popup {
 -- fingerprint reader listening at the same time when there is one. Any key
 -- types into the field; Enter checks it, Escape clears it.
 
-local LK = { password = "", busy = false, message = "", error = false, shake = 0,
-    fingerprint = nil, checking = nil, at = 0 }
-local function file_exists(p) local f = io.open(p, "r"); if f then f:close() end; return f ~= nil end
-local FINGERPRINT_SERVICE = "shady-lock-fingerprint"
+-- Typing, checking with PAM, the fingerprint reader and taking a lock over
+-- are shady-shell's `lockscreen` module; Tide draws the screen.
 
-local function cancel_auth(field)
-    if LK[field] then shell.cancel_authentication(LK[field]); LK[field] = nil end
-end
-
-local function listen_fingerprint()
-    if LK.fingerprint or not shell.locked() or not file_exists("/etc/pam.d/" .. FINGERPRINT_SERVICE) then return end
-    LK.fingerprint = shell.authenticate(nil, function(ok)
-        LK.fingerprint = nil
-        if ok then
-            cancel_auth("checking")
-            shell.unlock()
-        elseif shell.locked() then
-            -- Wrong finger or a timeout: listen again a little later.
-            shell.after(1500, listen_fingerprint)
-        end
-    end, { service = FINGERPRINT_SERVICE, on_message = function(_, text)
-        if not LK.busy then LK.message, LK.error = text, false end
-    end })
-end
-
-local function reset_lock()
-    LK.password, LK.busy, LK.message, LK.error = "", false, "", false
-end
-
-lock = function()
-    shell.close("tide-control")
-    shell.close("tide-power")
-    shell.close("tide-launcher")
-    if shell.locked() then return end
-    reset_lock()
-    LK.at = os.time()
-    -- Without the helper no password would ever unlock it: swaylock instead.
-    if shell.can_authenticate() and shell.lock() then
-        listen_fingerprint()
-    elseif HAVE.swaylock then
-        shell.spawn("pidof swaylock >/dev/null || swaylock -f -c 11111b")
-    else
-        shell.notify("Cannot lock the screen", "The compositor offers no session lock.", "Tide")
-    end
-end
-
-local function submit()
-    -- An empty password too: PAM decides whether the account takes one.
-    if LK.busy then return end
-    LK.busy, LK.message, LK.error = true, "Checking…", false
-    local password = LK.password
-    local started, id = pcall(shell.authenticate, password, function(ok, reason)
-        LK.checking, LK.busy = nil, false
-        if ok then
-            cancel_auth("fingerprint")
-            reset_lock()
-            shell.unlock()
-        else
-            LK.password, LK.error = "", true
-            LK.message = reason ~= "" and reason or "That was not it"
-            LK.shake = LK.shake + 1
-        end
-    end)
-    if started then
-        LK.checking = id
-    else
-        LK.busy, LK.password, LK.error = false, "", true
-        LK.message = "Cannot check the password"
-    end
-end
-
--- Whatever unlocked, attempts begun under this lock must not answer the next.
-shell.on("unlocked", function()
-    cancel_auth("fingerprint")
-    cancel_auth("checking")
-    reset_lock()
-end)
-
-shell.popup {
+local screen_lock = require("lockscreen").install {
     name = "tide-lock",
-    lock = true,
-    keyboard = "exclusive",
-    text_input = false,
-    view = function(ctx)
+    fingerprint = "shady-lock-fingerprint",
+    wrong = "That was not it",
+    before_lock = function()
+        shell.close("tide-control")
+        shell.close("tide-power")
+        shell.close("tide-launcher")
+    end,
+    -- Without the helper no password would ever unlock it: swaylock instead.
+    fallback = function()
+        if HAVE.swaylock then
+            shell.spawn("pidof swaylock >/dev/null || swaylock -f -c 11111b")
+            return true
+        end
+        shell.notify("Cannot lock the screen", "The compositor offers no session lock.", "Tide")
+        return false
+    end,
+    view = function(ctx, LK)
         local level, status = sys.battery()
         local dots = {}
-        local n = utf8.len(LK.password) or #LK.password
+        local n = LK.length
         for i = 1, math.min(n, 24) do
             dots[#dots + 1] = shell.box { key = "dot:" .. i, width = 8, height = 8, radius = 4,
                 background = P.text, enter = { opacity = 0, scale = 0.2 }, animate = "snappy" }
         end
         local field = shell.row {
-            key = "lock:field:" .. LK.shake, width = 300, height = 48, radius = 24,
+            key = "lock:field:" .. LK.attempts, width = 300, height = 48, radius = 24,
             padding = { 0, 20 }, gap = 8, align = "center", justify = n > 0 and "center" or "start",
             background = glass(0.72), border = LK.error and a(P.danger, 0.7) or a(P.text, 0.14),
-            enter = LK.shake > 0 and { translate = { 14, 0 } } or nil, animate = "bouncy",
+            enter = LK.attempts > 0 and { translate = { 14, 0 } } or nil, animate = "bouncy",
             n > 0 and dots or shell.row { gap = 10, align = "center",
                 shell.icon("lock", { size = 15, color = P.dim }),
                 text("Password", { font = font("Medium", 10.5), color = a(P.dim, 0.85) }) },
@@ -1475,39 +1281,20 @@ shell.popup {
                     text(user:sub(1, 1):upper(), { font = font("ExtraBold", 22), color = P.base }) },
                 text(user, { font = font("Bold", 12) }),
                 field,
-                text(LK.message ~= "" and LK.message or " ", { font = font("Medium", 9.5),
+                text(LK.busy and "Checking…" or (LK.message ~= "" and LK.message or " "), { font = font("Medium", 9.5),
                     color = LK.error and P.danger or P.dim }),
             },
             level and shell.row { right = 28, bottom = 24, gap = 6, align = "center",
                 battery_icon(level, status) } or false,
         }
     end,
-    on_key = function(key, typed)
-        if key == "Return" or key == "KP_Enter" then
-            submit()
-        elseif key == "Escape" then
-            LK.password, LK.message, LK.error = "", "", false
-        elseif key == "BackSpace" then
-            local cut = utf8.offset(LK.password, -1)
-            if cut then LK.password = LK.password:sub(1, cut - 1) end
-        elseif typed ~= "" and not LK.busy and #LK.password < 512 then
-            LK.password = LK.password .. typed
-            if LK.error then LK.message, LK.error = "", false end
-        end
-        shell.redraw()
-    end,
 }
 
--- A shell started (or restarted) while the session is locked takes the
--- lock over, so it can still be unlocked.
-shell.on("value", function(k, v)
-    if k == "session.lock" and v == "abandoned" then lock() end
-end)
+lock = function() return screen_lock.lock() end
 
 -- ---- keys from the compositor ------------------------------------------------
 
-local function handle(action)
-    local verb, arg = action:match("^(%S+)%s*(%S*)")
+local function handle(verb, arg)
     if verb == "volume" then
         local v = sys.volume() or 50
         act.volume(v + (tonumber(arg) or 0))
@@ -1561,21 +1348,20 @@ local function handle(action)
     end
 end
 
--- Values already set are replayed when the shell connects; those are not
--- key presses.
+-- init.lua sends keys as `tide.do`; shady-shell's `commands` module turns
+-- them back into words (and leaves alone the one replayed on connecting).
+require("commands").listen("tide.do", handle)
+
+-- Values already set are replayed when the shell connects; a screenshot
+-- saved before it started is not news.
 local started = os.time()
 shell.on("value", function(k, v)
-    if not v then return end
-    if k == "tide.do" then
-        if os.time() - started < 2 then return end
-        handle((v:gsub("%s+%d+$", "")))
-    elseif k == "screenshot.saved" and os.time() - started >= 2 then
+    if k == "screenshot.saved" and v and os.time() - started >= 2 then
         shell.notify("Screenshot saved", (v:gsub("^" .. home, "~")), "Screenshot")
     end
 end)
 
--- The control center replaces the toasts while it is open.
-shell.on("change", sync_toasts)
+toasts.follow { popup = "tide-toasts", hold = function() return shell.is_open("tide-control") end }
 
 -- ---- shortcuts (Super+Shift+/) -------------------------------------------------
 
