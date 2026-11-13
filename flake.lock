@@ -83,11 +83,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794561819,
+        "lastModified": 1794562475,
         "narHash": "sha256-+Yhzj7mj7J3Onv3vxOs8lizaYhaTExeKJNnOTZkafbI=",
         "owner": "gloaming-dusk",
         "repo": "shady-shell",
-        "rev": "bfb7976992f647d284263cef2ec4a85ea77fbd27",
+        "rev": "70ce69709f620d4349297b6c6562d851b644b8a3",
         "type": "github"
       },
       "original": {
