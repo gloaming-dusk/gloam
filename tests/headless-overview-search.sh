@@ -2,8 +2,8 @@
 # A tap of Super, then typing: the launcher opens with every key typed, and
 # launches what they name. The second half does it again with an input method
 # (tests/ime-probe.c grabbing the keyboard and giving the keys back, as fcitx5
-# does): each must reach it once, then the launcher. Needs wtype (in the dev
-# shell).
+# does): each must reach it once, then the launcher. Needs wtype (in
+# `nix develop`).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
